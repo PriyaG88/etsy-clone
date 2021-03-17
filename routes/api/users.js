@@ -5,6 +5,8 @@ const User = require('../../models/User');
 const jwt = require('jsonwebtoken');
 const keys = require('../../config/keys');
 const passport = require('passport');
+const validateRegisterInput = require('../../validation/register');
+const validateLoginInput = require('../../validation/login');
 
 router.get('/test', (req,res) => {
     res.json({ msg: 'This is the usersroute' });
@@ -13,19 +15,25 @@ router.get('/test', (req,res) => {
 router.get('/current', passport.authenticate('jwt', {session: false}), (req, res) => {
     res.json({
         id: req.user.id,
-        handle: req.user.handle,
+        firstName: req.user.firstName,
         email: req.user.email,
     });
 });
 
 router.post('/register', (req, res) => {
+    const { errors, isValid } = validateRegisterInput(req.body);
+
+    if (!isValid) {
+        return res.status(400).json(errors);
+    }
+
     User.findOne({ email: req.body.email })
         .then(user => {
             if (user) {
                 return res.status(400).json({ email: 'A user has already registered with this address' });
             } else {
                 const newUser = new User({
-                    handle: req.body.handle,
+                    firstName: req.body.firstName,
                     email: req.body.email,
                     password: req.body.password
                 });
@@ -44,7 +52,13 @@ router.post('/register', (req, res) => {
 });
 
 router.post('/login', (req, res) => {
+    const { errors, isValid } = validateLoginInput(req.body);
     const { email, password } = req.body;
+
+    if (!isValid) {
+        return res.status(400).json(errors);
+    }
+    
 
     User.findOne({ email })
         .then(user => {
@@ -57,7 +71,7 @@ router.post('/login', (req, res) => {
                     if (isMatch) {
                         const payload = { 
                             id: user.id, 
-                            handle: user.handle,
+                            firstName: user.firstName,
                             email: user.email,
                          };
 
